@@ -26,9 +26,11 @@ class Node:
     """
     A node of the branch and bound tree.
 
-    Contains a `root_problem`, a `parent_node`, and a fixed variable.
-    Then, call `get_fixed_vars()` to get a list of variable fixings from all parent nodes.
-    Calling `solve` solves the root problem with the given variable fixings.
+    Contains a `_cg_solver` (the column generation solver for the node),
+    a `parent_node`, and a fixed variable.
+    Then, calling `get_fixed_vars()` to get a list of variable fixings from
+    this and all parent nodes.
+    `solve` calls the column generation solver with the given variable fixings.
     """
 
     def __init__(self, parent_node: Node | None) -> None:
@@ -78,7 +80,7 @@ class Node:
 
     def _set_cg_solver(self, cg_solver: ColumnGenerationSolver):
         """
-        Sets the root problem
+        Sets the column generation solver
         """
         self._cg_solver = cg_solver
 
@@ -92,8 +94,7 @@ class Node:
     @classmethod
     def get_root_node(cls, problem: Problem):
         """
-        Creates the first root node.
-        This starts with formulated the base `RootProblem` for the solver.
+        Creates the first root node, and initialises the column generation solver
         No parent node, and no var fixings.
         """
         node = Node(None)
@@ -103,7 +104,7 @@ class Node:
 
 class BranchAndPriceSolver:
     """
-    An instance of branch and bound solver.
+    An instance of branch and price solver.
     """
 
     # Default parameters.
@@ -112,7 +113,7 @@ class BranchAndPriceSolver:
 
     def __init__(self, problem: Problem) -> None:
         """
-        Basic constructor of branch and bound solver for a problem instance
+        Basic constructor of branch and price solver for a problem instance
         """
         # Problem instance to solve
         self.problem: Problem = problem
@@ -126,7 +127,7 @@ class BranchAndPriceSolver:
 
     def solve(self):
         """
-        Solves the problem instance using branch and bound.
+        Solves the problem instance using branch and price.
         """
         # Add in the root node
         self._node_list.append(Node.get_root_node(self.problem))
@@ -139,7 +140,7 @@ class BranchAndPriceSolver:
             # Solve the node
             node_bound, partial_solution = node.solve()
 
-            # Attempt to repair
+            # Attempt to repair (if required)
             repaired_solution = self._heuristic_repair(partial_solution)
 
             # Did it manage to repair a solution?
