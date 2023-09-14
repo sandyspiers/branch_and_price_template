@@ -41,6 +41,9 @@ class SubProblem:
         """Removes all fixed variables"""
         pass
 
+    def get_objective_value(self):
+        return self.mdl.objective_value
+
     def solve(self, dual_values) -> tuple[float | None, Any | None]:
         """
         Solves the subproblem, for given fixed values (pre-provided) and given dual values.
@@ -104,6 +107,7 @@ class RestrictedMasterProblem:
         # Construct an initial lambda dummy, to outline model structure
         # dummy is set with UB=0 so it is never actually included
         dummy = self.mdl.continuous_var(ub=0, name="dummy")
+        self.lamba = []  # dont put dummy into list
 
         # Meet demand constraint
         self.demand_cts = self.mdl.add_constraints(
@@ -120,6 +124,7 @@ class RestrictedMasterProblem:
         """Adds a new extreme point the RMP formulation"""
         # Create new lambda variable
         lamba = self.mdl.continuous_var(name=f"lambda_{len(self.extreme_points)}")
+        self.lamba.append(lamba)
 
         # Add point to list
         self.extreme_points.append(x)
@@ -155,7 +160,7 @@ class RestrictedMasterProblem:
 
     def get_solution(self):
         """Returns the most recent solution"""
-        return None
+        return np.array([l.solution_value for l in self.lamba])
 
     def get_dual_values(self) -> np.ndarray:
         """Gets the dual values list of size n"""
@@ -179,6 +184,9 @@ class ColumnGenerationSolver:
             self.rmp.add_extreme_point(ep)
 
     def solve(self, fixings=None):
+        """
+        Solves the column generation procedure, returns a partial solution
+        """
         self._add_fixed_vars(fixings)
         iteration = 0
         while iteration < self.MAX_ITERATION:
@@ -199,18 +207,13 @@ class ColumnGenerationSolver:
             sp_objval, ep = self.sp.solve(dual_values)
             self.rmp.add_extreme_point(ep)
 
-            # Output
-            print(
-                f"{iteration}\tlb:{self.rmp.get_objective_value()}\tcg-gap:{sp_objval - reduced_cost}"
-            )
-
             # Check stopping criteria
             if (sp_objval - reduced_cost <= 1e-6 and self.problem.sense == "max") or (
                 sp_objval - reduced_cost >= 1e-6 and self.problem.sense == "min"
             ):
                 break
         self._remove_fixed_vars()
-        return self.rmp.get_objective_value(), self.rmp.get_solution()
+        return self.rmp.get_solution()
 
     def _add_fixed_vars(self, fixings):
         """Add in the fixed variables as listed in `fixings`"""
