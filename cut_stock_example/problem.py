@@ -45,18 +45,18 @@ class CutStockProblem:
                     x.append(np.zeros(self.num_items))
                 x[-1][i] += 1
                 d += 1
-        return np.array(x)
+        return x
 
     def get_bins_upper_bound(self) -> int:
         """
         Get the maximum number of bins that could be required.
         """
-        return self.get_heuristic_solution().shape[0]
+        return self.demand.sum()
 
     def get_cplex_model(self) -> Model:
         # Sets
         B = range(self.get_bins_upper_bound())  # bins
-        I = range(len(self.size))  # items
+        I = range(self.num_items)  # items
         BI = [(b, i) for b in B for i in I]
 
         # Model and dvars
