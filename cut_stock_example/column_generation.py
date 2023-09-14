@@ -2,6 +2,7 @@ from typing import Any
 
 import numpy as np
 from docplex.mp.model import Model
+
 from .problem import CutStockProblem
 
 
@@ -16,8 +17,8 @@ class SubProblem:
      - x (list[docplex.dvar]) : Decision vars for knapsack problem
 
     Methods
-     - add_fixed_vars(fixings : list[tuple]) : Adds in the variable fixings provided.
-     - remove_fixed_vars(fixings : list[tuple]) : Removes all fixings, resets for next solve.
+     - add_branch_constraints(fixings : list[tuple]) : Adds in the variable fixings provided.
+     - remove_branch_constraints() : Removes all fixings, resets for next solve.
      - solve(dual_values : Any) : Solves the subproblem for given dual variables.
                         Dual values become the objective coeffecients of knapsack problem.
     """
@@ -33,11 +34,11 @@ class SubProblem:
             self.mdl.scal_prod(self.x, problem.size) <= problem.roll_width
         )
 
-    def add_fixed_vars(self, fixings):
+    def add_branch_constraints(self, branch_constraints):
         """Add in the fixed variables as listed in `fixings`"""
         pass
 
-    def remove_fixed_vars(self):
+    def remove_branch_constraints(self):
         """Removes all fixed variables"""
         pass
 
@@ -83,8 +84,8 @@ class RestrictedMasterProblem:
     Methods
      - add_extreme_point(x) : add's `x` to the list of extreme points,
             and adds another blend variable to the RMP formulation.
-     - add_fixed_vars(fixings : list[tuple]) : Adds in the variable fixings provided.
-     - remove_fixed_vars(fixings : list[tuple]) : Removes all fixings, resets for next solve.
+     - add_branch_constraints(fixings : list[tuple]) : Adds in the variable fixings provided.
+     - remove_branch_constraints() : Removes all fixings, resets for next solve.
      - solve() : Solves the RMP.
      - get_dual_values() : returns the dual values that can then be used by the subproblem solver.
      - get_reduced_costs() : returns the reduced cost of the current blend.
@@ -136,11 +137,11 @@ class RestrictedMasterProblem:
         # Add to obj
         self.mdl.objective_expr += lamba
 
-    def add_fixed_vars(self, fixings):
+    def add_branch_constraints(self, branch_constraints):
         """Add in the fixed variables as listed in `fixings`"""
         pass
 
-    def remove_fixed_vars(self):
+    def remove_branch_constraints(self):
         """Removes all fixed variables"""
         pass
 
@@ -187,7 +188,7 @@ class ColumnGenerationSolver:
         """
         Solves the column generation procedure, returns a partial solution
         """
-        self._add_fixed_vars(fixings)
+        self._add_branch_constraints(fixings)
         iteration = 0
         while iteration < self.MAX_ITERATION:
             # Solve RMP
@@ -196,7 +197,7 @@ class ColumnGenerationSolver:
 
             # Check feasibility (fixed values may make it infeasible)
             if not self.rmp.is_feasible():
-                self._remove_fixed_vars()
+                self._remove_branch_constraints()
                 return None, None
 
             # Get dual values
@@ -212,15 +213,15 @@ class ColumnGenerationSolver:
                 sp_objval - reduced_cost >= 1e-6 and self.problem.sense == "min"
             ):
                 break
-        self._remove_fixed_vars()
+        self._remove_branch_constraints()
         return self.rmp.get_solution()
 
-    def _add_fixed_vars(self, fixings):
+    def _add_branch_constraints(self, fixings):
         """Add in the fixed variables as listed in `fixings`"""
-        self.rmp.add_fixed_vars(fixings)
-        self.sp.add_fixed_vars(fixings)
+        self.rmp.add_branch_constraints(fixings)
+        self.sp.add_branch_constraints(fixings)
 
-    def _remove_fixed_vars(self):
+    def _remove_branch_constraints(self):
         """Removes all fixed variables"""
-        self.rmp.remove_fixed_vars()
-        self.sp.remove_fixed_vars()
+        self.rmp.remove_branch_constraints()
+        self.sp.remove_branch_constraints()
