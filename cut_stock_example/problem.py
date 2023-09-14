@@ -15,6 +15,8 @@ class CutStockProblem:
         assert roll_width >= size.max()
         # Width of one roll
         self.roll_width = roll_width
+        # Number of different sizes
+        self.num_items = len(size)
         # Size of cuts
         self.size = size
         # Demand for each cut
@@ -31,9 +33,29 @@ class CutStockProblem:
         roll_width = np.random.randint(sizes.max(), sizes.sum())
         return cls(roll_width, sizes, demands)
 
+    def get_heuristic_solution(self) -> np.ndarray:
+        """
+        Returns a greedy heuristic solution by just packing in order
+        """
+        x = [np.zeros(self.num_items)]
+        for i in range(self.num_items):
+            d = 0
+            while d < self.demand[i]:
+                if x[-1].dot(self.size) + self.size[i] > self.roll_width:
+                    x.append(np.zeros(self.num_items))
+                x[-1][i] += 1
+                d += 1
+        return np.array(x)
+
+    def get_bins_upper_bound(self) -> int:
+        """
+        Get the maximum number of bins that could be required.
+        """
+        return self.get_heuristic_solution().shape[0]
+
     def get_cplex_model(self) -> Model:
         # Sets
-        B = range(len(self.demand))  # bins
+        B = range(self.get_bins_upper_bound())  # bins
         I = range(len(self.size))  # items
         BI = [(b, i) for b in B for i in I]
 
